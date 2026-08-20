@@ -1,0 +1,17 @@
+# Python Cache & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Large Model Weights (local checkpoints)
+models/*.pt
+models/*.bin
+models/*.safetensors
+
+# Local scratch / logs
+*.log
+.DS_Store
