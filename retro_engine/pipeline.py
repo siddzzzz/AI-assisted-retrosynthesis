@@ -14,6 +14,7 @@ from .chem.reaction_rules import ReactionRuleLibrary
 from .chem.building_blocks import BuildingBlockCatalog, get_default_catalog
 from .search.mcts import RetrosynthesisSearchTree, SynthesisPlan
 from .critic.stoichiometry import ReactionStoichiometryCalculator
+from .ml.inference import NeuralRetrosynthesisPolicy
 
 
 # Curated benchmark molecules with common names and SMILES
@@ -61,9 +62,10 @@ class RetrosynthesisEngine:
             rule_library=self.rule_lib,
             catalog=self.catalog,
         )
+        self.neural_policy = NeuralRetrosynthesisPolicy()
 
     def analyze_target(self, smiles: str) -> Dict[str, Any]:
-        """Validate SMILES, compute properties, and render high-contrast 2D chemical structure."""
+        """Validate SMILES, compute properties, neural physics predictions, and render 2D chemical structure."""
         props = calculate_mol_properties(smiles)
         if not props.get("valid"):
             return props
@@ -72,6 +74,11 @@ class RetrosynthesisEngine:
         svg = render_mol_svg(canonical_smi, width=300, height=200, dark_mode=False)
         props["svg_light"] = svg
         props["svg_dark"] = svg
+
+        # Neural Physics-Informed Predictions
+        neural_preds = self.neural_policy.predict_disconnections(canonical_smi, top_k=3)
+        props["neural_predictions"] = neural_preds
+
         return props
 
     def plan_synthesis(

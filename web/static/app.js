@@ -201,6 +201,32 @@ async function validateTargetMolecule(smiles) {
         targetFgTags.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">None detected</span>';
       }
 
+      // Render Neural Physics Predictions
+      const neuralBox = document.getElementById("neural-physics-box");
+      const predBarrier = document.getElementById("pred-barrier");
+      const predDielectric = document.getElementById("pred-dielectric");
+      const neuralTopPolicy = document.getElementById("neural-top-policy");
+
+      if (data.neural_predictions && data.neural_predictions.success) {
+        const np = data.neural_predictions;
+        predBarrier.textContent = `${np.predicted_barrier_kj} kJ/mol`;
+        predDielectric.textContent = `ε = ${np.predicted_dielectric}`;
+        
+        let policyHtml = `<div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Top Neural Disconnections:</div>`;
+        (np.top_predictions || []).slice(0, 2).forEach((p, idx) => {
+          policyHtml += `
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+              <span>#${idx + 1} ${p.reaction_name}</span>
+              <strong style="color: #0284c7;">${p.confidence_pct}%</strong>
+            </div>
+          `;
+        });
+        neuralTopPolicy.innerHTML = policyHtml;
+        neuralBox.style.display = "block";
+      } else {
+        neuralBox.style.display = "none";
+      }
+
       targetPropsContainer.style.display = "block";
     }
   } catch (err) {
