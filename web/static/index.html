@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Synthia-Retro AI | Next-Gen Multi-Step Chemical Synthesis Planning</title>
-  <meta name="description" content="AI-Assisted Retrosynthesis Engine with System 2 Mechanistic Feasibility, Solvent/Water Matrix, Automated Protecting Groups, and Multi-Objective Pareto Optimization.">
+  <meta name="description" content="AI-Assisted Retrosynthesis Engine with System 2 Mechanistic Feasibility, 3D Sterics, USPTO Precedent Matching, and ELN Batch Stoichiometry.">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +22,7 @@
         <div class="brand-icon">⚗️</div>
         <div>
           <h1 class="brand-title">Synthia-Retro AI</h1>
-          <p class="brand-subtitle">Physics-Informed Retrosynthesis & Multi-Step Reaction Planning</p>
+          <p class="brand-subtitle">Physics-Informed Retrosynthesis & Benchtop Synthesis Studio</p>
         </div>
       </div>
       <div class="header-badges">
@@ -67,8 +67,8 @@
           <label for="max-depth-select">Search Depth (Stages)</label>
           <select id="max-depth-select">
             <option value="3">3 Steps</option>
-            <option value="5">5 Steps</option>
-            <option value="6" selected>6 Steps (Full Petrochemical Feedstock Route)</option>
+            <option value="5" selected>5 Steps (Standard)</option>
+            <option value="6">6 Steps (Deep Petrochemical Feedstock Route)</option>
             <option value="8">8 Steps (Deep Multi-Stage)</option>
           </select>
         </div>
@@ -172,6 +172,22 @@
           </div>
         </div>
 
+        <!-- Bench Scale Batch Controller -->
+        <div class="scale-controller-bar" id="scale-controller" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-weight: 700; font-size: 13px; color: var(--text-primary);">⚖️ Batch Scale:</span>
+            <button class="scale-chip active" data-scale="1.0">1.0 g</button>
+            <button class="scale-chip" data-scale="0.5">500 mg</button>
+            <button class="scale-chip" data-scale="5.0">5.0 g</button>
+            <button class="scale-chip" data-scale="25.0">25.0 g</button>
+            <div style="display: flex; align-items: center; gap: 4px; margin-left: 6px;">
+              <input type="number" id="custom-scale-input" value="1.0" min="0.01" step="0.1" style="width: 70px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;" />
+              <span style="font-size: 12px; color: var(--text-muted);">g</span>
+            </div>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted); font-style: italic;">Auto-calculates reagent millimoles, masses & volumes below</span>
+        </div>
+
         <!-- Interactive Reaction Tree -->
         <div id="route-tree-container" class="tree-container">
           <div class="empty-state">
@@ -184,7 +200,7 @@
         <!-- Laboratory SOP Protocol Section -->
         <div class="sop-section" id="sop-section" style="display: none;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h4 style="font-size: 14px; color: var(--text-primary); font-weight: 700;">📋 Laboratory Standard Operating Procedure (SOP)</h4>
+            <h4 style="font-size: 14px; color: var(--text-primary); font-weight: 700;">📋 Electronic Lab Notebook (ELN) Bench Protocol</h4>
             <button id="copy-sop-btn" class="badge badge-critic" style="cursor: pointer;">📋 Copy Protocol</button>
           </div>
           <div class="sop-content" id="sop-markdown-viewer"></div>

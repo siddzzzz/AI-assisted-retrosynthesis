@@ -13,8 +13,8 @@ from retro_engine.chem.mol_utils import calculate_mol_properties, render_mol_svg
 
 app = FastAPI(
     title="AI-Assisted Retrosynthesis & Synthesis Planning Engine",
-    description="Next-generation chemoinformatics and multi-objective retrosynthesis engine with physical chemistry and green Pareto optimization.",
-    version="1.0.0",
+    description="Next-generation chemoinformatics and multi-objective retrosynthesis engine with physical chemistry, 3D sterics, and ELN batch stoichiometry.",
+    version="1.1.0",
 )
 
 # Initialize the Retrosynthesis Engine
@@ -33,13 +33,19 @@ class ValidateRequest(BaseModel):
 
 class PlanRequest(BaseModel):
     smiles: str
-    max_depth: int = 5
+    max_depth: int = 6
     max_routes: int = 6
-    time_limit_sec: float = 10.0
+    time_limit_sec: float = 12.0
+
+
+class ScaleRequest(BaseModel):
+    plan: Dict[str, Any]
+    target_scale_g: float = 1.0
 
 
 class SopRequest(BaseModel):
     plan: Dict[str, Any]
+    target_scale_g: float = 1.0
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -91,10 +97,17 @@ async def plan_synthesis(req: PlanRequest):
     return result
 
 
+@app.post("/api/scale-batch")
+async def scale_batch(req: ScaleRequest):
+    """Dynamically rescale reaction stoichiometry tables for a custom target batch scale (g)."""
+    rescaled_plan = engine.rescale_plan_stoichiometry(req.plan, target_scale_g=req.target_scale_g)
+    return {"plan": rescaled_plan}
+
+
 @app.post("/api/export-sop")
 async def export_sop(req: SopRequest):
     """Generate laboratory Standard Operating Procedure in Markdown format."""
-    sop_markdown = engine.generate_laboratory_sop(req.plan)
+    sop_markdown = engine.generate_laboratory_sop(req.plan, target_scale_g=req.target_scale_g)
     return {"sop_markdown": sop_markdown}
 
 

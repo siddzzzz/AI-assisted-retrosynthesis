@@ -4,6 +4,7 @@
 
 let currentPlans = [];
 let activePlanIndex = 0;
+let currentTargetScale = 1.0;
 
 // DOM Elements
 const smilesInput = document.getElementById("smiles-input");
@@ -30,6 +31,8 @@ const statYield = document.getElementById("stat-yield");
 const statGreen = document.getElementById("stat-green");
 const statAe = document.getElementById("stat-ae");
 const statPmi = document.getElementById("stat-pmi");
+const scaleController = document.getElementById("scale-controller");
+const customScaleInput = document.getElementById("custom-scale-input");
 const routeTreeContainer = document.getElementById("route-tree-container");
 
 const sopSection = document.getElementById("sop-section");
@@ -44,24 +47,20 @@ const searchTimeoutInput = document.getElementById("search-timeout");
 document.addEventListener("DOMContentLoaded", () => {
   loadPresets();
   setupEventListeners();
-  // Auto-validate default SMILES
   validateTargetMolecule(smilesInput.value.trim());
 });
 
 function setupEventListeners() {
-  // Plan button click
   planBtn.addEventListener("click", () => {
     executeRetrosynthesis();
   });
 
-  // SMILES input enter key
   smilesInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       executeRetrosynthesis();
     }
   });
 
-  // Debounced input change for structure preview
   let debounceTimeout;
   smilesInput.addEventListener("input", () => {
     clearTimeout(debounceTimeout);
@@ -70,7 +69,25 @@ function setupEventListeners() {
     }, 400);
   });
 
-  // Copy SOP button
+  // Scale Controller chips
+  document.querySelectorAll(".scale-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".scale-chip").forEach((c) => c.classList.remove("active"));
+      chip.classList.add("active");
+      const scale = parseFloat(chip.dataset.scale);
+      currentTargetScale = scale;
+      customScaleInput.value = scale;
+      rescaleCurrentPlan(scale);
+    });
+  });
+
+  customScaleInput.addEventListener("change", () => {
+    const scale = parseFloat(customScaleInput.value) || 1.0;
+    currentTargetScale = scale;
+    document.querySelectorAll(".scale-chip").forEach((c) => c.classList.remove("active"));
+    rescaleCurrentPlan(scale);
+  });
+
   copySopBtn.addEventListener("click", () => {
     if (sopMarkdownViewer.textContent) {
       navigator.clipboard.writeText(sopMarkdownViewer.textContent).then(() => {
@@ -82,6 +99,29 @@ function setupEventListeners() {
       });
     }
   });
+}
+
+// Rescale Current Plan Stoichiometry
+async function rescaleCurrentPlan(scaleGrams) {
+  if (!currentPlans[activePlanIndex]) return;
+  
+  try {
+    const res = await fetch("/api/scale-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan: currentPlans[activePlanIndex],
+        target_scale_g: scaleGrams,
+      }),
+    });
+    const data = await res.json();
+    if (data.plan) {
+      currentPlans[activePlanIndex] = data.plan;
+      selectPlan(activePlanIndex);
+    }
+  } catch (err) {
+    console.error("Failed to rescale batch:", err);
+  }
 }
 
 // Load Curated Chemical Presets
@@ -149,7 +189,6 @@ async function validateTargetMolecule(smiles) {
       propHbaHbd.textContent = `${data.hbd} / ${data.hba}`;
       propRotb.textContent = data.rotatable_bonds !== undefined ? data.rotatable_bonds : "-";
 
-      // Render functional groups
       targetFgTags.innerHTML = "";
       if (data.functional_groups && data.functional_groups.length > 0) {
         data.functional_groups.forEach((fg) => {
@@ -179,7 +218,7 @@ async function executeRetrosynthesis() {
     <div class="empty-state">
       <div class="spinner" style="width: 36px; height: 36px; margin-bottom: 14px;"></div>
       <h4>Executing Multi-Step Retrosynthesis Search...</h4>
-      <p>Applying reaction disconnections down to fundamental chemical feedstocks.</p>
+      <p>Applying reaction disconnections, checking 3D sterics, and matching patent precedents.</p>
     </div>`;
 
   try {
@@ -207,6 +246,7 @@ async function executeRetrosynthesis() {
       routeTabs.style.display = "none";
       routeMetricsBanner.style.display = "none";
       routeCountBadge.style.display = "none";
+      scaleController.style.display = "none";
       sopSection.style.display = "none";
       return;
     }
@@ -220,12 +260,13 @@ async function executeRetrosynthesis() {
       routeTreeContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">⚗️</div>
-          <h4>Basic Chemical Feedstock</h4>
-          <p>This molecule is already a primary chemical raw material.</p>
+          <h4>Primary Commodity Feedstock</h4>
+          <p>This molecule is already a basic raw chemical material.</p>
         </div>`;
       routeTabs.style.display = "none";
       routeMetricsBanner.style.display = "none";
       routeCountBadge.style.display = "none";
+      scaleController.style.display = "none";
       sopSection.style.display = "none";
     }
   } catch (err) {
@@ -246,12 +287,14 @@ function renderRouteTabs(plans) {
   if (plans.length === 0) {
     routeTabs.style.display = "none";
     routeCountBadge.style.display = "none";
+    scaleController.style.display = "none";
     return;
   }
 
   routeCountBadge.textContent = `${plans.length} Pathways Solved`;
   routeCountBadge.style.display = "inline-flex";
   routeTabs.style.display = "flex";
+  scaleController.style.display = "flex";
 
   plans.forEach((plan, idx) => {
     const tab = document.createElement("div");
@@ -290,7 +333,7 @@ function selectPlan(index) {
   statAe.textContent = `${plan.metrics.average_atom_economy}%`;
   statPmi.textContent = plan.metrics.estimated_pmi;
 
-  // 2. Render Interactive Reaction Tree
+  // 2. Render Interactive Reaction Tree with Stoichiometry & Precedent
   routeTreeContainer.innerHTML = "";
 
   if (plan.steps.length === 0) {
@@ -342,6 +385,65 @@ function selectPlan(index) {
       moistIcon = "🧪";
     }
 
+    // Precedent & 3D Sterics Badges
+    const precedent = step.precedent || {};
+    const sterics = step.sterics || {};
+    const purif = step.purification || {};
+    const stoich = step.stoichiometry || {};
+
+    let precedentTag = "";
+    if (precedent.patent_id) {
+      precedentTag = `<span class="condition-tag tag-precedent">📚 Patent: ${precedent.patent_id} (${precedent.similarity_pct || 85}%)</span>`;
+    }
+
+    let stericTag = "";
+    if (sterics.accessibility) {
+      stericTag = `<span class="condition-tag tag-steric">🧊 3D Sterics: ${sterics.accessibility} (${sterics.steric_burial_score}%)</span>`;
+    }
+
+    // Stoichiometry Table HTML
+    let stoichRows = (stoich.stoichiometry_table || []).map((row, rIdx) => {
+      const massDisp = row.mass_g >= 1.0 ? `${row.mass_g} g` : `${row.mass_mg} mg`;
+      const volDisp = row.volume_ml ? `${row.volume_ml} mL` : "—";
+      const nameDisp = row.name || row.smiles;
+      const isLimiting = row.role.includes("Limiting");
+      return `
+        <tr class="${isLimiting ? 'limiting-row' : ''}">
+          <td style="font-weight: 600;">${nameDisp}</td>
+          <td>${row.role}</td>
+          <td>${row.mw}</td>
+          <td>${row.equivalents.toFixed(2)}</td>
+          <td>${row.mmol.toFixed(2)}</td>
+          <td>${massDisp}</td>
+          <td>${volDisp}</td>
+        </tr>
+      `;
+    }).join("");
+
+    let stoichHtml = `
+      <div class="stoich-container">
+        <table class="stoich-table">
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Role</th>
+              <th>MW (g/mol)</th>
+              <th>Eq.</th>
+              <th>mmol</th>
+              <th>Mass</th>
+              <th>Volume</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stoichRows}
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+        💡 Reaction Volume: <strong>${stoich.recommended_solvent_volume_ml || 20.0} mL</strong> ${stoich.primary_solvent || 'solvent'} (~${stoich.concentration_molar || 0.2} M concentration).
+      </div>
+    `;
+
     // Protecting Group Alert
     let pgHtml = "";
     if (step.protection_plan) {
@@ -365,6 +467,21 @@ function selectPlan(index) {
         <div class="alert-box alert-cascade">
           <span>⚡</span>
           <div><strong>One-Pot Telescoping:</strong> ${step.cascade_note}</div>
+        </div>
+      `;
+    }
+
+    // Purification / Chromatography Advice
+    let purifHtml = "";
+    if (purif.recommended_eluent) {
+      purifHtml = `
+        <div class="alert-box alert-purify">
+          <span>🧪</span>
+          <div>
+            <strong>Flash Chromatography Eluent:</strong> <code>${purif.recommended_eluent}</code> | 
+            <strong>TLC Stain:</strong> ${purif.tlc_visualization} | 
+            <strong>Byproducts:</strong> ${purif.expected_side_products ? purif.expected_side_products.join(", ") : "Standard side-products"}
+          </div>
         </div>
       `;
     }
@@ -396,13 +513,12 @@ function selectPlan(index) {
         <span class="condition-tag tag-solvent">💧 Solvents: ${step.solvents.join(", ")}</span>
         <span class="condition-tag tag-temp">🌡️ Temp: ${step.temperature}</span>
         <span class="condition-tag ${moistClass}">${moistIcon} ${step.moisture_category}</span>
-        <span class="condition-tag" style="background: #f1f5f9; color: #475569;">⚛️ Atom Econ: ${step.atom_economy}%</span>
+        ${precedentTag}
+        ${stericTag}
       </div>
 
-      <div style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
-        <strong>Workup & Isolation:</strong> ${step.workup_protocol}
-      </div>
-
+      ${stoichHtml}
+      ${purifHtml}
       ${pgHtml}
       ${cascadeHtml}
     `;
@@ -410,7 +526,7 @@ function selectPlan(index) {
     routeTreeContainer.appendChild(stepCard);
   });
 
-  // 3. Fetch and Render SOP
+  // 3. Fetch and Render ELN SOP
   fetchSop(plan);
 }
 
@@ -423,7 +539,7 @@ async function fetchSop(plan) {
     const res = await fetch("/api/export-sop", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan: plan, target_scale_g: currentTargetScale }),
     });
     const data = await res.json();
     if (data.sop_markdown) {

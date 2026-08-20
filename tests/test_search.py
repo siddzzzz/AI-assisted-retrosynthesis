@@ -36,7 +36,7 @@ def test_generate_sop_protocol():
     result = engine.plan_synthesis("CC(=O)Nc1ccc(O)cc1")
     assert result["total_plans_found"] > 0
     
-    sop = engine.generate_laboratory_sop(result["plans"][0])
-    assert "# Laboratory Standard Operating Procedure" in sop
+    sop = engine.generate_laboratory_sop(result["plans"][0], target_scale_g=1.0)
+    assert "Electronic Lab Notebook" in sop
     assert "Required Raw Material Feedstocks" in sop
-    assert "Step-by-Step Reaction Protocol" in sop
+    assert "Stoichiometric Quantities" in sop
