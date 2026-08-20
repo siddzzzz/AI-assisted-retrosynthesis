@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synthia-Retro AI | Next-Gen Multi-Step Chemical Synthesis Planning</title>
+  <meta name="description" content="AI-Assisted Retrosynthesis Engine with System 2 Mechanistic Feasibility, Solvent/Water Matrix, Automated Protecting Groups, and Multi-Objective Pareto Optimization.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-logo">
+        <div class="brand-icon">⚗️</div>
+        <div>
+          <h1 class="brand-title">Synthia-Retro AI</h1>
+          <p class="brand-subtitle">Physics-Informed Retrosynthesis & Multi-Step Reaction Planning</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-cuda" title="RTX 3050 CUDA Acceleration Ready">⚡ GPU Accelerated</span>
+        <span class="badge badge-critic" title="System 2 Mechanistic Critic Active">🧠 System 2 Critic</span>
+        <span class="badge badge-green" title="Green Chemistry Pareto Evaluator">🌿 Green Pareto Engine</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+
+    <!-- Query & Preset Card -->
+    <section class="card" id="query-card">
+      <h2 class="card-title">🎯 Target Chemical Molecule</h2>
+
+      <!-- Presets -->
+      <div class="preset-container" id="preset-chips">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <!-- SMILES Input Row -->
+      <div class="input-row">
+        <input 
+          type="text" 
+          id="smiles-input" 
+          class="input-field" 
+          placeholder="Enter chemical SMILES (e.g. CC(=O)Nc1ccc(O)cc1 for Paracetamol, CC(=O)Oc1ccccc1C(=O)O for Aspirin)"
+          value="CC(=O)Nc1ccc(O)cc1"
+          autocomplete="off"
+        />
+        <button id="plan-btn" class="btn-primary">
+          <span id="btn-text">🚀 Plan Multi-Step Synthesis</span>
+          <span id="btn-spinner" class="spinner" style="display: none;"></span>
+        </button>
+      </div>
+
+      <!-- Advanced Search Controls -->
+      <div class="controls-grid">
+        <div class="control-item">
+          <label for="max-depth-select">Search Depth (Stages)</label>
+          <select id="max-depth-select">
+            <option value="3">3 Steps</option>
+            <option value="5">5 Steps</option>
+            <option value="6" selected>6 Steps (Full Petrochemical Feedstock Route)</option>
+            <option value="8">8 Steps (Deep Multi-Stage)</option>
+          </select>
+        </div>
+        <div class="control-item">
+          <label for="max-routes-select">Top Diverse Pathways</label>
+          <select id="max-routes-select">
+            <option value="3">Top 3 Routes</option>
+            <option value="5" selected>Top 5 Pareto Routes</option>
+            <option value="8">Top 8 Comprehensive</option>
+          </select>
+        </div>
+        <div class="control-item">
+          <label for="search-timeout">Search Time Budget (s)</label>
+          <input type="number" id="search-timeout" value="12" min="2" max="60" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Workspace Grid: Target Info + Routes -->
+    <div class="workspace-grid">
+
+      <!-- Left Column: Molecule Properties & Structure -->
+      <aside class="card" id="target-info-card">
+        <h3 class="card-title">🔬 Target Structure & Properties</h3>
+        
+        <div class="structure-preview-box" id="target-structure-box">
+          <div class="empty-state">
+            <div class="empty-state-icon">🧪</div>
+            <p>Enter SMILES to render 2D structure</p>
+          </div>
+        </div>
+
+        <div id="target-props-container" style="display: none;">
+          <div class="props-grid">
+            <div class="prop-badge">
+              <div class="label">Formula</div>
+              <div class="value" id="prop-formula">-</div>
+            </div>
+            <div class="prop-badge">
+              <div class="label">Mol. Weight</div>
+              <div class="value" id="prop-mw">-</div>
+            </div>
+            <div class="prop-badge">
+              <div class="label">LogP</div>
+              <div class="value" id="prop-logp">-</div>
+            </div>
+            <div class="prop-badge">
+              <div class="label">TPSA</div>
+              <div class="value" id="prop-tpsa">-</div>
+            </div>
+            <div class="prop-badge">
+              <div class="label">H-Donors / Acc</div>
+              <div class="value" id="prop-hba-hbd">-</div>
+            </div>
+            <div class="prop-badge">
+              <div class="label">Rot. Bonds</div>
+              <div class="value" id="prop-rotb">-</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px;">
+            <div class="label" style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Detected Functional Groups</div>
+            <div class="fg-tags" id="target-fg-tags"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Column: Multi-Step Synthetic Route Planner -->
+      <section class="card" id="route-results-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h3 class="card-title" style="margin-bottom: 0;">🗺️ Retrosynthetic Reaction Routes</h3>
+          <span id="route-count-badge" class="badge badge-green" style="display: none;">0 Routes Found</span>
+        </div>
+
+        <!-- Route Selector Tabs -->
+        <div class="route-tabs" id="route-tabs" style="display: none;">
+          <!-- Tabs populated dynamically -->
+        </div>
+
+        <!-- Route Active Metrics Bar -->
+        <div class="metrics-banner" id="route-metrics-banner" style="display: none;">
+          <div class="metric-stat">
+            <span class="num" id="stat-steps">0</span>
+            <span class="lbl">Total Steps</span>
+          </div>
+          <div class="metric-stat">
+            <span class="num" id="stat-yield" style="color: var(--accent-green);">0%</span>
+            <span class="lbl">Overall Yield</span>
+          </div>
+          <div class="metric-stat">
+            <span class="num" id="stat-green" style="color: var(--accent-cyan);">0/100</span>
+            <span class="lbl">Green Score</span>
+          </div>
+          <div class="metric-stat">
+            <span class="num" id="stat-ae">0%</span>
+            <span class="lbl">Avg. Atom Econ.</span>
+          </div>
+          <div class="metric-stat">
+            <span class="num" id="stat-pmi" style="color: var(--accent-purple);">0</span>
+            <span class="lbl">Est. PMI</span>
+          </div>
+        </div>
+
+        <!-- Interactive Reaction Tree -->
+        <div id="route-tree-container" class="tree-container">
+          <div class="empty-state">
+            <div class="empty-state-icon">🧬</div>
+            <h4>No Synthesis Route Generated Yet</h4>
+            <p>Click <strong>Plan Multi-Step Synthesis</strong> above to compute reaction pathways.</p>
+          </div>
+        </div>
+
+        <!-- Laboratory SOP Protocol Section -->
+        <div class="sop-section" id="sop-section" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 14px; color: var(--text-primary); font-weight: 700;">📋 Laboratory Standard Operating Procedure (SOP)</h4>
+            <button id="copy-sop-btn" class="badge badge-critic" style="cursor: pointer;">📋 Copy Protocol</button>
+          </div>
+          <div class="sop-content" id="sop-markdown-viewer"></div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
