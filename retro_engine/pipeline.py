@@ -1,8 +1,9 @@
 """High-level Orchestration API for the AI-Assisted Retrosynthesis Engine."""
 
-from typing import List, Dict, Optional, Any
+import os
 import json
 import time
+from typing import List, Dict, Optional, Any
 
 from .chem.mol_utils import (
     canonicalize_smiles,
@@ -62,7 +63,12 @@ class RetrosynthesisEngine:
             rule_library=self.rule_lib,
             catalog=self.catalog,
         )
-        self.neural_policy = NeuralRetrosynthesisPolicy()
+        # Automatically load trained physics transformer if available
+        workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(workspace_dir, "models", "physics_informed_gt_rtx3050.pt")
+        self.neural_policy = NeuralRetrosynthesisPolicy(
+            model_weights_path=model_path if os.path.exists(model_path) else None
+        )
 
     def analyze_target(self, smiles: str) -> Dict[str, Any]:
         """Validate SMILES, compute properties, neural physics predictions, and render 2D chemical structure."""
